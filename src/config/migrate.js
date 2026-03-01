@@ -13,6 +13,8 @@ const migrate = async () => {
         phone VARCHAR(20) UNIQUE NOT NULL,
         country_code VARCHAR(5) NOT NULL,
         username VARCHAR(50) UNIQUE,
+        email VARCHAR(255) UNIQUE,
+        google_id VARCHAR(255) UNIQUE,
         display_name VARCHAR(100),
         bio TEXT DEFAULT '',
         avatar_url TEXT,
