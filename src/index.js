@@ -111,7 +111,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 WaveChat server running on port ${PORT}`);
+  console.log(`🚀 YoChat server running on port ${PORT}`);
   console.log(`📡 Socket.io enabled`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 });
