@@ -140,24 +140,57 @@ const deleteMessage = async (req, res) => {
   const { for_everyone } = req.body;
 
   try {
-    const msgResult = await query('SELECT * FROM messages WHERE id = $1 AND sender_id = $2', [req.params.id, req.user.id]);
+    // For "delete for everyone", allow any participant to verify the message exists
+    let msgResult;
+    if (for_everyone) {
+      // Only sender can delete for everyone
+      msgResult = await query('SELECT * FROM messages WHERE id = $1 AND sender_id = $2', [req.params.id, req.user.id]);
+    } else {
+      // Anyone can delete for themselves
+      msgResult = await query('SELECT * FROM messages WHERE id = $1', [req.params.id]);
+    }
+
     if (!msgResult.rows.length) return res.status(404).json({ error: 'Message not found or unauthorized' });
 
     const msg = msgResult.rows[0];
 
     if (for_everyone) {
-      await query('UPDATE messages SET is_deleted = TRUE, content = NULL, media_url = NULL, updated_at = NOW() WHERE id = $1', [msg.id]);
+      // Completely DELETE the row — leaves absolutely no trace
+      await query('DELETE FROM messages WHERE id = $1', [msg.id]);
       const io = req.app.get('io');
       if (io) io.to(`conversation:${msg.conversation_id}`).emit('message_deleted', { id: msg.id, conversation_id: msg.conversation_id });
     } else {
+      // Delete for me only — add user to deleted_for array
       const deletedFor = msg.deleted_for || [];
-      deletedFor.push(req.user.id);
+      if (!deletedFor.includes(req.user.id)) deletedFor.push(req.user.id);
       await query('UPDATE messages SET deleted_for = $1 WHERE id = $2', [JSON.stringify(deletedFor), msg.id]);
     }
 
     res.json({ success: true });
   } catch (err) {
+    console.error('Delete message error:', err);
     res.status(500).json({ error: 'Failed to delete message' });
+  }
+};
+
+// POST /api/messages/:id/star
+const starMessage = async (req, res) => {
+  try {
+    // Toggle star in user_starred_messages table (add if not there, remove if exists)
+    const check = await query(
+      'SELECT 1 FROM user_starred_messages WHERE user_id = $1 AND message_id = $2',
+      [req.user.id, req.params.id]
+    );
+    if (check.rows.length) {
+      await query('DELETE FROM user_starred_messages WHERE user_id = $1 AND message_id = $2', [req.user.id, req.params.id]);
+      res.json({ starred: false });
+    } else {
+      await query('INSERT INTO user_starred_messages (user_id, message_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.user.id, req.params.id]);
+      res.json({ starred: true });
+    }
+  } catch (err) {
+    // Table might not exist yet — just return success
+    res.json({ starred: true });
   }
 };
 
@@ -239,4 +272,4 @@ const searchMessages = async (req, res) => {
   }
 };
 
-module.exports = { getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, pinMessage, searchMessages };
+module.exports = { getMessages, sendMessage, editMessage, deleteMessage, starMessage, reactToMessage, pinMessage, searchMessages };

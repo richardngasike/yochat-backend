@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { authenticate } = require('../middleware/auth');
 const { upload } = require('../controllers/mediaController');
-const { getMessages, sendMessage, editMessage, deleteMessage, reactToMessage, pinMessage, searchMessages } = require('../controllers/messagesController');
+const { getMessages, sendMessage, editMessage, deleteMessage, starMessage, reactToMessage, pinMessage, searchMessages } = require('../controllers/messagesController');
 
 router.get('/:conversationId', authenticate, getMessages);
 router.get('/:conversationId/search', authenticate, searchMessages);
